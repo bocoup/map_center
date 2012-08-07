@@ -259,7 +259,7 @@ BroadcastSchedule.prototype = {
             if ("endTime" in options) {
 
                 eventObjs = _.filter(eventObjs, function(eventObj) {
-                    return eventObj.timeStamp < options.endTime;
+                    return eventObj.timeStamp <= options.endTime;
                 });
             }
 
