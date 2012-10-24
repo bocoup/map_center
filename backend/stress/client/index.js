@@ -19,6 +19,9 @@ var argParser = optimist
     .describe("v", "Periodically print connection status")
     .boolean("v")
     .alias("v", "verbose")
+    .describe("d",
+        "The number of seconds over which to disperse client connections")
+    .default("d", 3*60)
     .describe("t", "Transport mechanism")
     .alias("t", "transport")
     .default("t", "websocket")
@@ -28,6 +31,9 @@ var argParser = optimist
         }
         if (typeof args.p !== "number") {
             throw "p must be a number";
+        }
+        if (typeof args.d !== "number") {
+            throw "d must be a number";
         }
         if (!~["websocket", "xhr-polling"].indexOf(args.t)) {
             throw "unrecognized transport";
@@ -42,8 +48,8 @@ var argv = argParser.argv;
 require("http").globalAgent.maxSockets = Infinity;
 
 var clientCount = argv.c;
-// The interval that clients send "heartbeat" messages to the server
-var heartbeatInterval = 25*1000;
+var dispersionInterval = argv.d*1000;
+var startupMsg;
 var idx;
 var Connection;
 var connection;
@@ -97,7 +103,15 @@ app.get("/dump", function(req, res) {
 });
 
 if (argv.v) {
-    console.log("Spawning " + clientCount + " clients...");
+    startupMsg = "Spawning " + clientCount + " clients ";
+    if (argv.d === 0) {
+        startupMsg += "immediately";
+    } else {
+        startupMsg += "over " + argv.d +
+            " second" + (argv.d === 1 ? "" : "s" );
+    }
+    startupMsg += "...";
+    console.log(startupMsg);
 }
 
 var handlers = {
@@ -190,7 +204,7 @@ tests.xmlhttprequest = function() {
 
         // Disperse connections across the heartbeat interval in order to avoid
         // synchronizing client heartbeats
-        setTimeout(connectClient, 0.1*heartbeatInterval*(idx/clientCount),
+        setTimeout(connectClient, 0.1*dispersionInterval*(idx/clientCount),
             {
                 url: "http://50.56.87.187:8000/socket.io/1/?t=" + new Date().getTime(),
                 idx: idx
@@ -233,7 +247,7 @@ tests.iorequest = function() {
 
         // Disperse connections across the heartbeat interval in order to avoid
         // synchronizing client heartbeats
-        setTimeout(connectClient, 0.1*heartbeatInterval*(idx/clientCount),
+        setTimeout(connectClient, 0.1*dispersionInterval*(idx/clientCount),
             {
                 url: "http://50.56.87.187:8000/socket.io/1/?t=" + new Date().getTime(),
                 idx: idx
@@ -261,7 +275,7 @@ tests.handshake = function() {
 
         // Disperse connections across the heartbeat interval in order to avoid
         // synchronizing client heartbeats
-        setTimeout(connectClient, 0.1*heartbeatInterval*(idx/clientCount), idx);
+        setTimeout(connectClient, 0.1*dispersionInterval*(idx/clientCount), idx);
     }
 };
 
@@ -285,7 +299,7 @@ tests.socketio = function() {
 
         // Disperse connections across the heartbeat interval in order to avoid
         // synchronizing client heartbeats
-        setTimeout(connectClient, 0.1*heartbeatInterval*(idx/clientCount), idx);
+        setTimeout(connectClient, 0.1*dispersionInterval*(idx/clientCount), idx);
     }
 };
 
@@ -301,9 +315,13 @@ tests.liveMap = function() {
 
     for (idx = 0; idx < clientCount; ++idx) {
 
-        // Disperse connections across the heartbeat interval in order to avoid
-        // synchronizing client heartbeats
-        setTimeout(connectClient, heartbeatInterval*(idx/clientCount), idx);
+        if (dispersionInterval === 0) {
+            connectClient(idx);
+        } else {
+            // Disperse connections across the heartbeat interval in order to
+            // avoid synchronizing client heartbeats
+            setTimeout(connectClient, dispersionInterval*(idx/clientCount), idx);
+        }
     }
 };
 
