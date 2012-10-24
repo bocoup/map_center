@@ -3,6 +3,12 @@ var socketIo = require("socket.io");
 // ----------------------------------------------------------------------------
 // --[ broadcast state management ]
 
+var redis = require("redis");
+var RedisStore = socketIo.RedisStore,
+    pub = redis.createClient(),
+    sub = redis.createClient(),
+    client = redis.createClient();
+
 var auth = require("./auth");
 
 var socketServer;
@@ -239,6 +245,13 @@ handlerGenerators = exports.handlerGenerators = {
 exports.initialize = function(httpServer, newBroadcastSchedule) {
     broadcastSchedule = newBroadcastSchedule;
     socketServer = socketIo.listen(httpServer);
+
+    socketServer.set("store", new RedisStore({
+      redisPub: pub,
+      redisSub: sub,
+      redisClient: client
+    }));
+
     /* socket.io does not support ad-hoc binding to all currently-connected clients
      * (**see below). This effects the approach to dynamically assigning event
      * handlers. Instead of running the following code:
