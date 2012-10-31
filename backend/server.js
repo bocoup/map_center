@@ -1,5 +1,21 @@
 var http = require("http");
 var express = require("express");
+var cluster = require("cluster");
+var os = require("os");
+
+var numCPUs = os.cpus().length;
+
+if (cluster.isMaster) {
+    // Fork workers.
+    for (var i = 0; i < numCPUs; i++) {
+      cluster.fork();
+    }
+
+    cluster.on('exit', function(worker, code, signal) {
+      console.log('worker ' + worker.process.pid + ' died');
+    });
+    return;
+}
 
 var app = express();
 var BroadcastSchedule = require("./BroadcastSchedule");

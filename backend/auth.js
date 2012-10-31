@@ -24,11 +24,8 @@ fs.readdirSync(credentialsDir)
         CREDS[contents.serviceName] = contents;
     });
 
-// Dynamically generating a secret in this way means one less file will have to
-// be managed outside of the repository. The drawback is that, in the event of
-// a server re-start, all authenticated users will be kicked and need to re-
-// authenticate.
-var sessionSecret = "This is a secret." + Math.random();
+// TODO: Load session secret from environment
+var sessionSecret = "This is a secret.";
 var secureCookieParser = express.cookieParser(sessionSecret);
 var sessionStore = new RedisStore();
 
